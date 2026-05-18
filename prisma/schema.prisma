@@ -1,0 +1,215 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         Role     @default(COACH)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  attendances Attendance[]
+  auditLogs   AuditLog[]
+}
+
+enum Role {
+  MANAGER
+  COACH
+  ADMIN
+}
+
+model Season {
+  id          String   @id @default(cuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  ageCategory String
+  active      Boolean  @default(false)
+
+  sessions Session[]
+}
+
+model Venue {
+  id       String  @id @default(cuid())
+  name     String
+  notes    String?
+  archived Boolean @default(false)
+
+  sessions Session[]
+}
+
+model SessionType {
+  id   String @id @default(cuid())
+  name String @unique
+
+  sessions Session[]
+}
+
+model AttendanceCode {
+  code      String  @id // P, C, L, I, E, U, X
+  label     String
+  weight    Float
+  colour    String
+  sortOrder Int
+  protected Boolean @default(false)
+
+  attendances Attendance[]
+}
+
+model Player {
+  id             String    @id @default(cuid())
+  firstName      String
+  lastName       String
+  displayName    String?
+  dob            DateTime?
+  joinedAt       DateTime  @default(now())
+  archivedAt     DateTime?
+  codePreference String    @default("dual")
+  positions      String    @default("[]") // JSON array
+  parentName     String?
+  parentPhone    String?
+  parentEmail    String?
+  photoUrl       String?
+
+  attendances  Attendance[]
+  statuses     PlayerStatus[]
+  matchScores  PlayerMatchScore[]
+  runResults   RunResult[]
+}
+
+model PlayerStatus {
+  id        String    @id @default(cuid())
+  playerId  String
+  player    Player    @relation(fields: [playerId], references: [id])
+  status    String // long_term_injured | county_duty
+  sessionId String? // for county_duty (per-session)
+  startDate DateTime?
+  endDate   DateTime?
+  note      String?
+  createdAt DateTime  @default(now())
+}
+
+model Session {
+  id           String      @id @default(cuid())
+  seasonId     String
+  season       Season      @relation(fields: [seasonId], references: [id])
+  typeId       String
+  type         SessionType @relation(fields: [typeId], references: [id])
+  date         DateTime
+  startTime    String?
+  venueId      String
+  venue        Venue       @relation(fields: [venueId], references: [id])
+  dayOfWeek    String
+  cancelled    Boolean     @default(false)
+  cancelReason String?
+  locked       Boolean     @default(false)
+  // match-only
+  opposition   String?
+  homeAway     String?
+  competition  String?
+  ourScore     String?
+  theirScore   String?
+  notes        String?
+
+  attendances    Attendance[]
+  selections     MatchSelection[]
+  layoutVariants TeamLayoutVariant[]
+  matchScores    PlayerMatchScore[]
+}
+
+model Attendance {
+  id             String         @id @default(cuid())
+  sessionId      String
+  session        Session        @relation(fields: [sessionId], references: [id])
+  playerId       String
+  player         Player         @relation(fields: [playerId], references: [id])
+  code           String
+  attendanceCode AttendanceCode @relation(fields: [code], references: [code])
+  note           String?
+  recordedBy     String
+  recorder       User           @relation(fields: [recordedBy], references: [id])
+  recordedAt     DateTime       @default(now())
+
+  @@unique([sessionId, playerId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  entity     String
+  entityId   String
+  action     String // CREATE | UPDATE | DELETE
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id])
+  beforeJson String?
+  afterJson  String?
+  at         DateTime @default(now())
+}
+
+model MatchSelection {
+  id        String  @id @default(cuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id])
+  playerId  String
+  status    String // starter | bench | standby | not_selected
+  position  String?
+  note      String?
+  locked    Boolean @default(false)
+
+  @@unique([sessionId, playerId])
+}
+
+model TeamLayoutVariant {
+  id            String  @id @default(cuid())
+  sessionId     String
+  session       Session @relation(fields: [sessionId], references: [id])
+  name          String
+  positionsJson String
+}
+
+model PlayerMatchScore {
+  id             String  @id @default(cuid())
+  sessionId      String
+  session        Session @relation(fields: [sessionId], references: [id])
+  playerId       String
+  player         Player  @relation(fields: [playerId], references: [id])
+  goals          Int     @default(0)
+  points         Int     @default(0)
+  freesWon       Int     @default(0)
+  freesConverted Int     @default(0)
+  yellows        Int     @default(0)
+  blacks         Int     @default(0)
+  reds           Int     @default(0)
+  minutesPlayed  Int?
+  position       String?
+  motm           Boolean @default(false)
+
+  @@unique([sessionId, playerId])
+}
+
+model RunRecord {
+  id         String      @id @default(cuid())
+  date       DateTime
+  testType   String
+  conditions String?
+  results    RunResult[]
+}
+
+model RunResult {
+  id           String    @id @default(cuid())
+  runRecordId  String
+  runRecord    RunRecord @relation(fields: [runRecordId], references: [id])
+  playerId     String
+  player       Player    @relation(fields: [playerId], references: [id])
+  result       Float
+  personalBest Boolean   @default(false)
+}
