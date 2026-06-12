@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Players', href: '/players', icon: '👥' },
   { label: 'Sessions', href: '/sessions', icon: '📅' },
   { label: 'Leaderboard', href: '/leaderboard', icon: '🏆' },
+  { label: 'Bronco Tests', href: '/bronco', icon: '⏱️' },
   { label: 'Settings', href: '/settings', icon: '⚙️', roles: ['MANAGER', 'ADMIN'] },
 ]
 
